@@ -8,7 +8,17 @@ client = OpenAI(api_key=OPENAI_API_KEY)
 
 
 def generate_questions_from_text(text):
-    prompt = f"Utiliza el siguiente texto para generar 5 preguntas de opción múltiple:\n\n{text}"
+    prompt = f"""Utiliza el siguiente texto para generar 5 preguntas de opción múltiple en el siguiente formato JSON:
+       {{
+         "questions": [
+           {{
+             "question": "Pregunta aquí",
+             "alternatives": ["Opción 1", "Opción 2", "Opción 3", "Opción 4"],
+             "answer": 0
+           }},
+           // Agregar más preguntas
+         ]
+       }}\n\nTexto:\n{text}"""
 
     completion = client.chat.completions.create(
         model="gpt-4o-mini",
@@ -16,16 +26,10 @@ def generate_questions_from_text(text):
             {"role": "system",
              "content": "Eres un experto en generar preguntas de opción múltiple basadas en un texto proporcionado."},
             {"role": "user", "content": prompt}
-        ]
+        ],
+        response_format={"type": "json_object"}
     )
 
-    response = completion.choices[0].message.content
-    # Procesa la respuesta y formatea las preguntas en un formato JSON
-    # Supongamos que el formato ya es JSON, si no, deberás procesar la respuesta adecuadamente
-    import json
-    try:
-        questions = json.loads(response)
-    except json.JSONDecodeError:
-        questions = []
+    # Devuelve la respuesta en crudo sin procesar
+    return completion.choices[0].message.content
 
-    return questions
