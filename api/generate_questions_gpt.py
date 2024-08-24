@@ -3,11 +3,10 @@
 from openai import OpenAI
 from .config import OPENAI_API_KEY
 
-# Configurar el cliente OpenAI con la clave API importada
 client = OpenAI(api_key=OPENAI_API_KEY)
 
 
-def generate_questions_from_text(text):
+def generate_questions_from_gpt(text):
     prompt = f"""Utiliza el siguiente texto para generar 5 preguntas de opción múltiple en el siguiente formato JSON:
        {{
          "questions": [
