@@ -8,7 +8,7 @@ import os
 from .generate_questions_gpt import generate_questions_from_gpt
 from .gemini_generation import generate_questions_from_gemini
 from .claude_generation import generate_questions_from_claude
-
+import time
 
 
 @csrf_exempt
@@ -26,6 +26,7 @@ def welcome(request):
 @csrf_exempt
 def process_pdf_gpt(request):
     if request.method == 'POST':
+        start_time = time.time()  # Empieza el temporizador
         try:
             data = json.loads(request.body)
             pdf_url = data.get('pdf_url', None)
@@ -58,6 +59,10 @@ def process_pdf_gpt(request):
                 except json.JSONDecodeError:
                     return JsonResponse({'error': 'Error al procesar la respuesta de GPT como JSON'}, status=500)
 
+            # Calcular el tiempo transcurrido
+            elapsed_time = time.time() - start_time
+            print(f"Tiempo de generación GPT: {elapsed_time} segundos")
+
             # Retornar el JSON como respuesta exitosa sin anidar "questions" innecesariamente
             return JsonResponse(questions)
 
@@ -73,6 +78,7 @@ def process_pdf_gpt(request):
 @csrf_exempt
 def process_pdf_gemini(request):
     if request.method == 'POST':
+        start_time = time.time()  # Empieza el temporizador
         try:
             # Cargar el cuerpo de la solicitud
             data = json.loads(request.body)
@@ -114,6 +120,10 @@ def process_pdf_gemini(request):
             except json.JSONDecodeError:
                 return JsonResponse({'error': 'Error al procesar la respuesta de Gemini como JSON'}, status=500)
 
+            # Calcular el tiempo transcurrido
+            elapsed_time = time.time() - start_time
+            print(f"Tiempo de generación Gemini: {elapsed_time} segundos")
+
             # Retornar el JSON como respuesta exitosa
             return JsonResponse(questions)
 
@@ -127,6 +137,7 @@ def process_pdf_gemini(request):
 @csrf_exempt
 def process_pdf_claude(request):
     if request.method == 'POST':
+        start_time = time.time()  # Empieza el temporizador
         try:
             # Cargar el cuerpo de la solicitud
             data = json.loads(request.body)
@@ -173,6 +184,10 @@ def process_pdf_claude(request):
             return JsonResponse({'error': 'JSON inválido'}, status=400)
         except Exception as e:
             return JsonResponse({'error': str(e)}, status=500)
+
+        # Calcular el tiempo transcurrido
+        elapsed_time = time.time() - start_time
+        print(f"Tiempo de generación Claude: {elapsed_time} segundos")
 
     return JsonResponse({'error': 'Método no permitido'}, status=405)
 
