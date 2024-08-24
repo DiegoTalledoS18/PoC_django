@@ -58,8 +58,8 @@ def process_pdf_gpt(request):
                 except json.JSONDecodeError:
                     return JsonResponse({'error': 'Error al procesar la respuesta de GPT como JSON'}, status=500)
 
-            # Retornar el JSON como respuesta exitosa
-            return JsonResponse({'questions': questions})
+            # Retornar el JSON como respuesta exitosa sin anidar "questions" innecesariamente
+            return JsonResponse(questions)
 
         except json.JSONDecodeError:
             return JsonResponse({'error': 'JSON inválido'}, status=400)
@@ -67,6 +67,7 @@ def process_pdf_gpt(request):
             return JsonResponse({'error': str(e)}, status=500)
 
     return JsonResponse({'error': 'Método no permitido'}, status=405)
+
 
 
 @csrf_exempt
@@ -157,9 +158,14 @@ def process_pdf_claude(request):
                 questions_text = questions[0].text
                 try:
                     questions_json = json.loads(questions_text)
+                    # Verifica si el JSON tiene la estructura esperada
+                    if isinstance(questions_json, dict) and 'questions' in questions_json:
+                        # Retorna el JSON como respuesta exitosa sin anidar "questions" innecesariamente
+                        return JsonResponse({'questions': questions_json['questions']})
+                    else:
+                        return JsonResponse({'error': 'Formato de respuesta inválido'}, status=500)
                 except json.JSONDecodeError:
                     return JsonResponse({'error': 'Error al procesar la respuesta de Claude como JSON'}, status=500)
-                return JsonResponse({'questions': questions_json})
 
             return JsonResponse({'error': 'Formato de respuesta inesperado'}, status=500)
 
@@ -169,6 +175,8 @@ def process_pdf_claude(request):
             return JsonResponse({'error': str(e)}, status=500)
 
     return JsonResponse({'error': 'Método no permitido'}, status=405)
+
+
 
 
 
