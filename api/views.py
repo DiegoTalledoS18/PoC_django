@@ -7,6 +7,9 @@ import fitz  # PyMuPDF
 import os
 from .generate_questions_gpt import generate_questions_from_gpt
 from .gemini_generation import generate_questions_from_gemini
+from .claude_generation import generate_questions_from_claude
+
+
 
 @csrf_exempt
 def welcome(request):
@@ -119,6 +122,54 @@ def process_pdf_gemini(request):
             return JsonResponse({'error': str(e)}, status=500)
 
     return JsonResponse({'error': 'Método no permitido'}, status=405)
+
+@csrf_exempt
+def process_pdf_claude(request):
+    if request.method == 'POST':
+        try:
+            # Cargar el cuerpo de la solicitud
+            data = json.loads(request.body)
+            pdf_url = data.get('pdf_url', None)
+
+            if not pdf_url:
+                return JsonResponse({'error': 'No se proporcionó la URL del PDF'}, status=400)
+
+            # Descargar el archivo PDF desde Firebase
+            response = requests.get(pdf_url)
+            if response.status_code != 200:
+                return JsonResponse({'error': 'No se pudo descargar el archivo PDF'}, status=500)
+
+            # Guardar el PDF en un archivo temporal
+            with open('temp.pdf', 'wb') as f:
+                f.write(response.content)
+
+            # Extraer el texto del PDF
+            pdf_text = pdf_to_text('temp.pdf')
+
+            # Generar preguntas basadas en el texto
+            questions = generate_questions_from_claude(pdf_text)
+
+            # Eliminar el archivo temporal
+            os.remove('temp.pdf')
+
+            # Si `questions` es una lista con un solo `TextBlock`
+            if isinstance(questions, list) and len(questions) > 0 and hasattr(questions[0], 'text'):
+                questions_text = questions[0].text
+                try:
+                    questions_json = json.loads(questions_text)
+                except json.JSONDecodeError:
+                    return JsonResponse({'error': 'Error al procesar la respuesta de Claude como JSON'}, status=500)
+                return JsonResponse({'questions': questions_json})
+
+            return JsonResponse({'error': 'Formato de respuesta inesperado'}, status=500)
+
+        except json.JSONDecodeError:
+            return JsonResponse({'error': 'JSON inválido'}, status=400)
+        except Exception as e:
+            return JsonResponse({'error': str(e)}, status=500)
+
+    return JsonResponse({'error': 'Método no permitido'}, status=405)
+
 
 
 
