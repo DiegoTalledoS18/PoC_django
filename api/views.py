@@ -13,11 +13,11 @@ def welcome(request):
     if request.method == 'POST':
         try:
             data = json.loads(request.body)
-            name = data.get('name', 'World')
+            name = data.get('name', 'Anonimo')
             return JsonResponse({'message': f'Hola {name}'})
         except json.JSONDecodeError:
-            return JsonResponse({'message': f'Hola Anonimo'})
-    return JsonResponse({'message': f'Hola Anonimo'})
+            return JsonResponse({'message': 'Error en la decodificación JSON'}, status=400)
+    return JsonResponse({'message': 'Método no permitido'}, status=405)
 
 
 @csrf_exempt
