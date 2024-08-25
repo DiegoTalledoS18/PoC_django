@@ -1,7 +1,6 @@
 from django.http import JsonResponse
 import json
 from django.views.decorators.csrf import csrf_exempt
-from django.http import JsonResponse
 import requests
 import fitz  # PyMuPDF
 import os
@@ -9,7 +8,6 @@ from .generate_questions_gpt import generate_questions_from_gpt
 from .gemini_generation import generate_questions_from_gemini
 from .claude_generation import generate_questions_from_claude
 import time
-
 
 @csrf_exempt
 def welcome(request):
@@ -21,7 +19,6 @@ def welcome(request):
         except json.JSONDecodeError:
             return JsonResponse({'message': 'Error en la decodificación JSON'}, status=400)
     return JsonResponse({'message': 'Método no permitido'}, status=405)
-
 
 @csrf_exempt
 def process_pdf_gpt(request):
@@ -40,17 +37,21 @@ def process_pdf_gpt(request):
                 return JsonResponse({'error': 'No se pudo descargar el archivo PDF'}, status=500)
 
             # Guardar el PDF en un archivo temporal
-            with open('temp.pdf', 'wb') as f:
+            temp_pdf_path = 'temp.pdf'
+            with open(temp_pdf_path, 'wb') as f:
                 f.write(response.content)
 
+            # Obtener el tamaño del archivo PDF en kilobytes
+            pdf_size_kb = os.path.getsize(temp_pdf_path) / 1024
+
             # Extraer el texto del PDF
-            pdf_text = pdf_to_text('temp.pdf')
+            pdf_text = pdf_to_text(temp_pdf_path)
 
             # Generar preguntas basadas en el texto
             questions = generate_questions_from_gpt(pdf_text)
 
             # Eliminar el archivo temporal
-            os.remove('temp.pdf')
+            os.remove(temp_pdf_path)
 
             # Convertir la respuesta de GPT a un objeto JSON si es necesario
             if isinstance(questions, str):
@@ -61,9 +62,10 @@ def process_pdf_gpt(request):
 
             # Calcular el tiempo transcurrido
             elapsed_time = time.time() - start_time
-            print(f"Tiempo de generación GPT: {elapsed_time} segundos")
+            print(f"Tiempo de generación GPT: {elapsed_time:.2f} segundos | PDF: {pdf_size_kb:.2f} KB")
 
             # Retornar el JSON como respuesta exitosa sin anidar "questions" innecesariamente
+            print(questions)
             return JsonResponse(questions)
 
         except json.JSONDecodeError:
@@ -73,14 +75,11 @@ def process_pdf_gpt(request):
 
     return JsonResponse({'error': 'Método no permitido'}, status=405)
 
-
-
 @csrf_exempt
 def process_pdf_gemini(request):
     if request.method == 'POST':
         start_time = time.time()  # Empieza el temporizador
         try:
-            # Cargar el cuerpo de la solicitud
             data = json.loads(request.body)
             pdf_url = data.get('pdf_url', None)
 
@@ -93,27 +92,29 @@ def process_pdf_gemini(request):
                 return JsonResponse({'error': 'No se pudo descargar el archivo PDF'}, status=500)
 
             # Guardar el PDF en un archivo temporal
-            with open('temp.pdf', 'wb') as f:
+            temp_pdf_path = 'temp.pdf'
+            with open(temp_pdf_path, 'wb') as f:
                 f.write(response.content)
 
+            # Obtener el tamaño del archivo PDF en kilobytes
+            pdf_size_kb = os.path.getsize(temp_pdf_path) / 1024
+
             # Extraer el texto del PDF
-            pdf_text = pdf_to_text('temp.pdf')
+            pdf_text = pdf_to_text(temp_pdf_path)
 
             # Generar preguntas basadas en el texto
             questions_string = generate_questions_from_gemini(pdf_text)
 
             # Eliminar el archivo temporal
-            os.remove('temp.pdf')
+            os.remove(temp_pdf_path)
 
             # Intentar convertir la cadena de respuesta en un JSON
             try:
-                # La respuesta de Gemini puede estar en formato string con formato JSON
                 if questions_string.startswith('```json'):
                     questions_string = questions_string.replace('```json', '').replace('```', '').strip()
 
                 questions = json.loads(questions_string)
 
-                # Verificar si el JSON tiene la estructura esperada
                 if not isinstance(questions, dict) or 'questions' not in questions:
                     return JsonResponse({'error': 'Formato de respuesta inválido'}, status=500)
 
@@ -122,9 +123,8 @@ def process_pdf_gemini(request):
 
             # Calcular el tiempo transcurrido
             elapsed_time = time.time() - start_time
-            print(f"Tiempo de generación Gemini: {elapsed_time} segundos")
-
-            # Retornar el JSON como respuesta exitosa
+            print(f"Tiempo de generación Gemini: {elapsed_time:.2f} segundos | PDF: {pdf_size_kb:.2f} KB")
+            print(questions)
             return JsonResponse(questions)
 
         except json.JSONDecodeError:
@@ -139,7 +139,6 @@ def process_pdf_claude(request):
     if request.method == 'POST':
         start_time = time.time()  # Empieza el temporizador
         try:
-            # Cargar el cuerpo de la solicitud
             data = json.loads(request.body)
             pdf_url = data.get('pdf_url', None)
 
@@ -152,26 +151,30 @@ def process_pdf_claude(request):
                 return JsonResponse({'error': 'No se pudo descargar el archivo PDF'}, status=500)
 
             # Guardar el PDF en un archivo temporal
-            with open('temp.pdf', 'wb') as f:
+            temp_pdf_path = 'temp.pdf'
+            with open(temp_pdf_path, 'wb') as f:
                 f.write(response.content)
 
+            # Obtener el tamaño del archivo PDF en kilobytes
+            pdf_size_kb = os.path.getsize(temp_pdf_path) / 1024
+
             # Extraer el texto del PDF
-            pdf_text = pdf_to_text('temp.pdf')
+            pdf_text = pdf_to_text(temp_pdf_path)
 
             # Generar preguntas basadas en el texto
             questions = generate_questions_from_claude(pdf_text)
 
             # Eliminar el archivo temporal
-            os.remove('temp.pdf')
+            os.remove(temp_pdf_path)
 
-            # Si `questions` es una lista con un solo `TextBlock`
             if isinstance(questions, list) and len(questions) > 0 and hasattr(questions[0], 'text'):
                 questions_text = questions[0].text
                 try:
                     questions_json = json.loads(questions_text)
-                    # Verifica si el JSON tiene la estructura esperada
                     if isinstance(questions_json, dict) and 'questions' in questions_json:
-                        # Retorna el JSON como respuesta exitosa sin anidar "questions" innecesariamente
+                        print(questions_json['questions'])
+                        elapsed_time = time.time() - start_time
+                        print(f"Tiempo de generación Claude: {elapsed_time:.2f} segundos | PDF: {pdf_size_kb:.2f} KB")
                         return JsonResponse({'questions': questions_json['questions']})
                     else:
                         return JsonResponse({'error': 'Formato de respuesta inválido'}, status=500)
@@ -185,16 +188,9 @@ def process_pdf_claude(request):
         except Exception as e:
             return JsonResponse({'error': str(e)}, status=500)
 
-        # Calcular el tiempo transcurrido
-        elapsed_time = time.time() - start_time
-        print(f"Tiempo de generación Claude: {elapsed_time} segundos")
+
 
     return JsonResponse({'error': 'Método no permitido'}, status=405)
-
-
-
-
-
 
 def pdf_to_text(pdf_path):
     pdf_document = fitz.open(pdf_path)
